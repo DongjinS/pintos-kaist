@@ -14,13 +14,15 @@
 #include "kernel/stdio.h"
 #include "threads/palloc.h"
 /* ------------------------------- */
+/* ---------- Project 3 ---------- */
+#include "vm/vm.h"
+/* ------------------------------- */
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
 /* ---------- Project 2 ---------- */
-void check_address(const uint64_t *uaddr);
-
+struct page* check_address(const uint64_t *uaddr);
 void halt (void);			/* 구현 완료 */
 void exit (int status);		/* 구현 완료 */
 tid_t fork (const char *thread_name, struct intr_frame *f);
@@ -36,7 +38,9 @@ void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
 /* ------------------------------- */
-
+/* ---------- Project 3 ---------- */
+void check_buffer (void *buffer, unsigned size, bool to_write);
+/* ------------------------------- */
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -126,14 +130,29 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	}
 	/* ------------------------------- */
 }
-
-/* ---------- Project 2 ---------- */
-void 
-check_address (const uint64_t *user_addr) {
-	struct thread *curr = thread_current();
-	if (user_addr = NULL || !(is_user_vaddr(user_addr)) || pml4_get_page(curr->pml4, user_addr) == NULL) {
+/* ---------- Project 3 ---------- */
+void
+check_buffer (void *buffer, unsigned size, bool to_write){
+	struct page *page = check_address(buffer+size);
+	if (page == NULL){
 		exit(-1);
 	}
+	if (to_write == false && page->writable== false){
+		exit(-1);
+	}
+}
+/* ------------------------------- */
+/* ---------- Project 2 ---------- */
+struct page * 
+check_address (const uint64_t *user_addr) {
+	struct thread *curr = thread_current();
+	// if (user_addr = NULL || !(is_user_vaddr(user_addr)) || pml4_get_page(curr->pml4, user_addr) == NULL) {
+	// 	exit(-1);
+	// }
+	if (is_kernel_vaddr(user_addr)){
+		exit(-1);
+	}
+	return spt_find_page(&thread_current()->spt, user_addr);
 }
 
 int add_file_to_fdt(struct file *file) {
@@ -261,6 +280,7 @@ read (int fd, void *buffer, unsigned size) {
 	}
 
 	check_address(buffer);
+	check_buffer(buffer, size, 1);
 
 	int read_result_size;
 	struct file *file_obj = get_file_from_fd_table(fd);
@@ -305,6 +325,7 @@ write (int fd, const void *buffer, unsigned size) {
 	}
 
 	check_address(buffer);
+	check_buffer(buffer, size, 0);
 
 	int write_result_size;
 	struct file *file_obj = get_file_from_fd_table(fd);

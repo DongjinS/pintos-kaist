@@ -14,6 +14,8 @@
         "new": "c",
         "ostream": "c",
         "streambuf": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "vaddr.h": "c",
+        "vm.h": "c"
     }
 }

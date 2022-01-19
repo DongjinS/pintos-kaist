@@ -684,6 +684,26 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	struct lazy_load_info *lazy_load_info = (struct lazy_load_info *)aux;
+	struct file *file = lazy_load_info->file;
+	size_t page_read_bytes = lazy_load_info->page_read_bytes;
+	size_t page_zero_bytes = lazy_load_info->page_zero_bytes;
+	off_t offset = lazy_load_info->offset;
+
+	file_seek(file, offset);
+	ASSERT(page->frame != NULL);
+	
+	if (file_read(file, page->frame->kva, page_read_bytes) != (int)page_read_bytes){
+		// palloc_free_page(page->frame->kva);
+
+		free(lazy_load_info);
+		return false;
+	}
+
+	memset(page->frame->kva + page_read_bytes, 0, page_zero_bytes);
+	free(lazy_load_info);
+
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -715,14 +735,28 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		/* ------------ project 3 -------------- */
+		struct lazy_load_info *lazy_load_info = malloc(sizeof(struct lazy_load_info));
+		lazy_load_info->file = file;
+		lazy_load_info->page_read_bytes = page_read_bytes;
+		lazy_load_info->page_zero_bytes = page_zero_bytes;
+		lazy_load_info->offset = ofs;
+		void *aux = lazy_load_info;
+		/* ------------------------------------- */
+
 		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
 					writable, lazy_load_segment, aux))
+		{
+			free(aux);
 			return false;
+		}
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
+		/* ------------ project 3 -------------- */
+		ofs += page_read_bytes;
+		/* ------------------------------------- */
 		upage += PGSIZE;
 	}
 	return true;
@@ -738,20 +772,29 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, true)){
+		success = vm_claim_page(stack_bottom);
+		if (success){
+			if_->rsp = USER_STACK;
+		}
+		else{
+			printf("Failed on setup_stack\n\n");
+		}
+	}
 
 	return success;
 }
 #endif /* VM */
 
 static void argument_pass(struct intr_frame *if_, int argv_cnt, char **argv_list){
-	char *argu_addr[128];
+	// char *argu_addr[128];
 	int i;
 	// stack에 argv_list 의 인자들을 값 복사 
 	for (int i = argv_cnt-1;i>=0;i--){
 		int argc_len = strlen(argv_list[i]);
 		if_->rsp = if_->rsp - (argc_len+1); 
 		memcpy(if_->rsp, argv_list[i], (argc_len+1));
-		argu_addr[i] = if_->rsp;
+		argv_list[i] = if_->rsp;
 	}
 	// put align padding 
 	while (if_->rsp%8!=0){
@@ -764,7 +807,7 @@ static void argument_pass(struct intr_frame *if_, int argv_cnt, char **argv_list
 		if (i == argv_cnt){
 			memset(if_->rsp, 0, sizeof(char **));
 		}else{
-			memcpy(if_->rsp, &argu_addr[i] , sizeof(char **));
+			memcpy(if_->rsp, &argv_list[i] , sizeof(char **));
 		}
 	}
 	// return 값을 넣어준다 - 사용자 프로세스는 돌아갈 곳이 없음므로 0

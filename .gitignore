@@ -47,3 +47,5 @@ dkms.conf
 # Custom
 /threads/build/*
 /userprog/build/*
+/vm/build/*
+/vm/log_make_check.txt
