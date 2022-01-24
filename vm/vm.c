@@ -5,6 +5,9 @@
 #include "vm/inspect.h"
 #include "threads/vaddr.h"
 
+struct list frame_table;
+struct list_elem *start;
+
 static uint64_t page_hash (const struct hash_elem *e, void *aux);
 static bool page_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 static void spt_destructor(struct hash_elem *e, void* aux);
@@ -21,6 +24,8 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table);
+	start = list_begin(&frame_table); //?
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -127,6 +132,27 @@ static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
+	// clock algorithm
+	struct thread *curr = thread_current();
+	struct list_elem *e = start;
+
+	for (start = e; start != list_end(&frame_table); start = list_next(&frame_table)){
+		victim = list_entry(start, struct frame, frame_elem);
+		if (pml4_is_accessed(curr->pml4, victim->page->va)){
+			pml4_set_accessed(curr->pml4, victim->page->va, 0);
+		}else{
+			return victim;
+		}
+	}
+
+	for (start = list_begin(&frame_table); start != e; start = list_next(&frame_table)){
+		victim = list_entry(start, struct frame, frame_elem);
+		if (pml4_is_accessed(curr->pml4, victim->page->va)){
+			pml4_set_accessed(curr->pml4, victim->page->va, 0);
+		}else{
+			return victim;
+		}
+	}
 
 	return victim;
 }
@@ -135,10 +161,17 @@ vm_get_victim (void) {
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame (void) {
-	struct frame *victim UNUSED = vm_get_victim ();
+	struct frame *victim = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
 
-	return NULL;
+	ASSERT(victim != NULL);
+	if (victim->page != NULL){
+		if (swap_out(victim->page)==false){
+			PANIC("swap out failed");
+		}
+	}
+
+	return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -152,12 +185,17 @@ vm_get_frame (void) {
 	void *kva = palloc_get_page(PAL_USER);
 
 	if (kva == NULL) {
-		PANIC ("todo: implement eviction");
+		// PANIC ("todo: implement eviction");
+		frame = vm_evict_frame();
+		frame->page = NULL;
+		
+		return frame;
 	}else{
 		frame = malloc(sizeof(struct frame));
 		if (frame == NULL) {
 			PANIC ("todo: handle case when malloc fails.");
 		}
+		list_push_back(&frame_table ,&frame->frame_elem);
 		frame->kva = kva;
 		frame->page = NULL;
 	}

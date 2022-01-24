@@ -12,6 +12,7 @@ typedef bool vm_initializer (struct page *, void *aux);
 struct uninit_page {
 	/* Initiate the contets of the page */
 	vm_initializer *init;
+	int swap_index;
 	enum vm_type type;
 	void *aux;
 	/* Initiate the struct page and maps the pa to the va */

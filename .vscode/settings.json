@@ -14,6 +14,7 @@
         "new": "c",
         "ostream": "c",
         "streambuf": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "disk.h": "c"
     }
 }
