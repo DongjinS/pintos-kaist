@@ -7,6 +7,7 @@
 
 struct list frame_table;
 struct list_elem *start;
+// struct lock frame_lock;
 
 static uint64_t page_hash (const struct hash_elem *e, void *aux);
 static bool page_less (const struct hash_elem *a, const struct hash_elem *b, void *aux);
@@ -187,6 +188,7 @@ vm_get_frame (void) {
 	if (kva == NULL) {
 		// PANIC ("todo: implement eviction");
 		frame = vm_evict_frame();
+		frame->page->frame = NULL;
 		frame->page = NULL;
 		
 		return frame;
@@ -387,6 +389,5 @@ static void spt_destructor(struct hash_elem *e, void* aux) {
 			pml4_set_dirty(t->pml4, page->va, false);
 		}
 	}
-
 	spt_remove_page(&t->spt, page);
 }

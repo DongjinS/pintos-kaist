@@ -37,7 +37,8 @@ bool
 anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
 	page->operations = &anon_ops;
-	struct anon_page *anon_page = &page->anon;
+	memset(kva, 0 , PGSIZE);
+	// struct anon_page *anon_page = &page->anon;
 
 	return true;
 }

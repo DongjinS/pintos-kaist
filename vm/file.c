@@ -49,7 +49,7 @@ file_backed_swap_in (struct page *page, void *kva) {
 
 	file_seek(file, ofs);
 	ASSERT(page->frame != NULL);
-	if (file_read(file, kva, page_read_bytes) != (int) page_read_bytes) {
+	if (file_read(file, kva, page_read_bytes) != (off_t) page_read_bytes) {
 		return false;
 	}
 	memset(kva + page_read_bytes, 0, page_zero_bytes);
@@ -74,7 +74,6 @@ file_backed_swap_out (struct page *page) {
 		}
 		pml4_set_dirty(t->pml4, page->va, false);
 	}
-	// spt_remove_page(&t->spt, page);
 	pml4_clear_page(t->pml4, page->va);
 	return true;
 }
@@ -168,5 +167,5 @@ do_munmap (void *addr) {
 		page = spt_find_page(&t->spt, addr);
 	}
 
-	// file_close(file);
+	file_close(file);
 }
