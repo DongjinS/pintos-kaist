@@ -162,10 +162,11 @@ do_munmap (void *addr) {
 			}
 			pml4_set_dirty(t->pml4, page->va, false);
 		}
-		spt_remove_page(&t->spt, page);  // pml4_clear() ?
+		pml4_clear_page(thread_current()->pml4, page->va);
+		// spt_remove_page(&t->spt, page);  // pml4_clear() ?
 		addr += PGSIZE;
 		page = spt_find_page(&t->spt, addr);
 	}
 
-	file_close(file);
+	// file_close(file);
 }

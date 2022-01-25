@@ -120,7 +120,7 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 	hash_delete(&spt->hash_table, &page->hash_elem);
 
 	if (page->frame != NULL) {
-		page->frame->page == NULL;
+		page->frame->page = NULL;
 	}
 	
 	vm_dealloc_page (page);
@@ -136,7 +136,7 @@ vm_get_victim (void) {
 	struct thread *curr = thread_current();
 	struct list_elem *e = start;
 
-	for (start = e; start != list_end(&frame_table); start = list_next(&frame_table)){
+	for (start = e; start != list_end(&frame_table); start = list_next(start)){
 		victim = list_entry(start, struct frame, frame_elem);
 		if (pml4_is_accessed(curr->pml4, victim->page->va)){
 			pml4_set_accessed(curr->pml4, victim->page->va, 0);
@@ -145,7 +145,7 @@ vm_get_victim (void) {
 		}
 	}
 
-	for (start = list_begin(&frame_table); start != e; start = list_next(&frame_table)){
+	for (start = list_begin(&frame_table); start != e; start = list_next(start)){
 		victim = list_entry(start, struct frame, frame_elem);
 		if (pml4_is_accessed(curr->pml4, victim->page->va)){
 			pml4_set_accessed(curr->pml4, victim->page->va, 0);
